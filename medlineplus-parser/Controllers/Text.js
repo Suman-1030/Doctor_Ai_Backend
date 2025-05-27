@@ -1,7 +1,7 @@
 import dotenv from 'dotenv';
 import fetch from 'node-fetch';
 import multer from 'multer';
-import pdfParse from 'pdf-parse';
+import { PDFDocument } from 'pdf-lib';
 import mammoth from 'mammoth';
 import * as cheerio from 'cheerio';
 import fs from 'fs';
@@ -20,6 +20,25 @@ const healthTopics = JSON.parse(
 
 const storage = multer.memoryStorage();
 export const Uploadmiddleware = multer({ storage }).single('file');
+
+// Helper function to extract text from PDF using pdf-lib
+async function extractTextFromPDF(buffer) {
+  try {
+    const pdfDoc = await PDFDocument.load(buffer);
+    let textContent = '';
+    
+    for (let i = 0; i < pdfDoc.getPageCount(); i++) {
+      const page = pdfDoc.getPage(i);
+      const text = await page.getTextContent();
+      textContent += text.items.map(item => item.str).join(' ') + '\n';
+    }
+    
+    return textContent;
+  } catch (error) {
+    console.error('Error extracting PDF text:', error);
+    throw new Error('Failed to parse PDF');
+  }
+}
 
 async function Text(req, res) {
   const prompt = req.body.prompt;
@@ -48,8 +67,7 @@ async function Text(req, res) {
     if (file) {
       const fileType = file.mimetype;
       if (fileType === 'application/pdf') {
-        const pdfData = await pdfParse(file.buffer);
-        fileContent = pdfData.text;
+        fileContent = await extractTextFromPDF(file.buffer);
       } else if (fileType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
         const docData = await mammoth.extractRawText({ buffer: file.buffer });
         fileContent = docData.value;
@@ -102,19 +120,14 @@ async function Text(req, res) {
           const heading = $(el).text().trim().toLowerCase();
           if (heading.startsWith(sectionTitle)) {
             const sectionHtml = $(el).nextUntil('h3').addBack().map((_, el) => $.html(el)).get().join('\n');
-            
-            // ====== STRIP HTML TAGS HERE ======
             const plainText = cheerio.load(sectionHtml).text().trim();
             reply = `According to MedlinePlus:\n\n${plainText}`;
-            // ====== END STRIP HTML TAGS ======
-
             return false; // break loop
           }
         });
       }
 
       if (!reply) {
-        // Strip all HTML tags from the full content if no section matched
         const plainText = cheerio.load(matchedTopic.content).text().trim();
         reply = `According to MedlinePlus:\n\n${plainText}`;
       }
