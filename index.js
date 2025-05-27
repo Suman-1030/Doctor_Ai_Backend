@@ -10,7 +10,12 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 4000;
 
-app.use(cors());
+// app.use(cors());
+app.use(cors({
+  origin: 'https://doctor-ai-frontend-av7r.vercel.app',
+  credentials: true,
+}));
+
 app.use(express.json());
 
 // Routes
