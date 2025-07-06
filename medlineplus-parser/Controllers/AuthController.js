@@ -39,8 +39,12 @@ const LoginOtpGeneration=async (req,res)=>{
 
       try{
         const user = await User.findOne({email})
+        const OtpExist= await Authmodel.findOne({email})
         if(!user){
           return res.status(404).json({"msg":"user not Registered"})
+        }
+        if(OtpExist){
+          const DeleteOtp= await Authmodel.findByIdAndDelete(OtpExist._id)
         }
         const Otp=crypto.randomInt(100000,999999).toString()
         const expiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes expiry
