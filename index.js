@@ -12,10 +12,8 @@ const PORT = process.env.PORT || 4000;
 
 // app.use(cors());
 
-app.use(cors({
-  origin: ['http://localhost:5173', 'https://doctor-ai-frontend.vercel.app'],
-  credentials: true,
-}));
+app.use(cors());
+
 
 
 app.use(express.json());
